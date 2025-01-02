@@ -1,10 +1,11 @@
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request, send_file
 from dotenv import load_dotenv
 import logging
 
 
 from rvc_wrapper.client import RVCWrapper
-from tts_wrapper.client import TTSWrapper
+from tts_wrapper.f5_client import F5TTSWrapper
+from tts_wrapper.xtts_client import XTTSWrapper
 from utils.logger import setup_logger
 
 
@@ -15,8 +16,11 @@ class RVCFlaskApp:
         self.app = Flask(__name__)
 
         # TTS setup
-        self.tts_wrapper = TTSWrapper(self.LOGGER)
+        self.tts_wrapper = XTTSWrapper(self.LOGGER)
         self.tts_config = self.tts_wrapper.config
+
+        # self.tts_wrapper = F5TTSWrapper(self.LOGGER)
+        # self.tts_config = self.tts_wrapper.config
 
         # Rvc setup
         self.rvc_wrapper = RVCWrapper(self.LOGGER)
@@ -36,7 +40,14 @@ class RVCFlaskApp:
 
                 audio = self.tts_wrapper.infer_audio(request_data['message'])
                 ref_audio = self.rvc_wrapper.infer_audio(audio)
-                return jsonify({"message": f"Audio processing complete", "filename": ref_audio})
+
+                return send_file(
+                    ref_audio,
+                    as_attachment=True,
+                    download_name="processed_audio.wav",  # Specify the download filename
+                    mimetype="audio/wav"
+                )
+                # return jsonify({"message": f"Audio processing complete", "filename": ref_audio})
             except Exception as e:
                 self.LOGGER.error(e)
                 abort(503)
