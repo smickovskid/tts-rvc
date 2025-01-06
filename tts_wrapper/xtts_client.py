@@ -55,26 +55,36 @@ class XTTSWrapper:
             self.tts.cuda()
 
         self.logger.info("XTTS model loaded successfully.")
+        self.logger.info("Warming up model")
+        _ = self.infer_audio("Generating warmup text so the first response is fast.")
+        self.logger.info("Warmup done")
 
     def infer_audio(self, text: str) -> str:
 
         self.logger.info("Starting TTS inference...")
         speaker_audio_path = f"{PROJECT_ROOT}/{self.config['tts_reference_wav']}"
+
+        # Split if multiple audios supplied
+        if "," in speaker_audio_path:
+            speaker_audio_path = speaker_audio_path.split(",")
         gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
             audio_path=speaker_audio_path,
             gpt_cond_len=self.tts.config.gpt_cond_len,
             max_ref_length=self.tts.config.max_ref_len,
             sound_norm_refs=self.tts.config.sound_norm_refs,
         )
+        temperature = self.tts.config.temperature
+        length_penalty = self.tts.config.length_penalty
+        repetition_penalty = self.tts.config.repetition_penalty
 
         out = self.tts.inference(
             text=text,
             language=self.config["tts_language"],
             gpt_cond_latent=gpt_cond_latent,
             speaker_embedding=speaker_embedding,
-            temperature=self.tts.config.temperature,
-            length_penalty=self.tts.config.length_penalty,
-            repetition_penalty=self.tts.config.repetition_penalty,
+            temperature=temperature,
+            length_penalty=length_penalty,
+            repetition_penalty=repetition_penalty,
             top_k=self.tts.config.top_k,
             top_p=self.tts.config.top_p,
             enable_text_splitting=True,
