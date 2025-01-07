@@ -8,7 +8,7 @@ from rvc.modules.vc.modules import os
 
 from rvc_wrapper.client import RVCWrapper
 from tts_wrapper.xtts_client import XTTSWrapper
-from models.models import define_models
+from api_models.models import define_models
 from utils.logger import setup_logger
 
 
