@@ -5,18 +5,15 @@ from typing import TypedDict
 from logging import Logger
 import torch
 from TTS.tts.configs.xtts_config import XttsConfig
-from TTS.tts.models.xtts import Xtts, torchaudio
+from TTS.tts.models.xtts import Path, Xtts, torchaudio
 from utils.config import check_env_vars
 from utils.const import PROJECT_ROOT, UNCONVERTED_DATA_DIR
 
 
 class XTTSV2Config(TypedDict):
     tts_model_dir: str
-    tts_config_path: str
-    tts_vocab_path: str
-    tts_reference_wav: str
     tts_language: str
-    tts_speakers: str
+    use_deepspeed: bool
 
 
 class XTTSWrapper:
@@ -25,18 +22,28 @@ class XTTSWrapper:
         self.logger = logger
         self.config: XTTSV2Config = {
             "tts_model_dir": os.getenv("tts_model_dir", ""),
-            "tts_config_path": os.getenv("tts_config_path", ""),
-            "tts_vocab_path": os.getenv("tts_vocab_path", ""),
-            "tts_reference_wav": os.getenv("tts_reference_wav", ""),
-            "tts_speakers": os.getenv("tts_speakers", ""),
             "tts_language": os.getenv("tts_language", ""),
+            "use_deepspeed": bool(os.getenv("use_deepspeed", "").lower() in ["true", "1", "yes"]),
         }
-        check_env_vars(self.config, self.logger)
+        check_env_vars(dict(self.config), self.logger)
 
         # Load XTTS configuration and model
-        xtts_config_path = f"{PROJECT_ROOT}/{self.config['tts_config_path']}"
+        xtts_config_path = f"{PROJECT_ROOT}/{self.config['tts_model_dir']}/config.json"
         xtts_model_path = f"{PROJECT_ROOT}/{self.config['tts_model_dir']}/model.pth"
-        xtts_vocab_path = f"{PROJECT_ROOT}/{self.config['tts_vocab_path']}"
+        xtts_vocab_path = f"{PROJECT_ROOT}/{self.config['tts_model_dir']}/vocab.json"
+        xtts_speakers_path = f"{PROJECT_ROOT}/{self.config['tts_model_dir']}/speakers_xtts.pth"
+        reference_dir = Path(f"{PROJECT_ROOT}/{self.config['tts_model_dir']}/reference_files")
+
+        for path in [xtts_config_path, xtts_model_path, xtts_vocab_path]:
+            if not Path(path).exists():
+                raise FileNotFoundError(f"Required file does not exist: {path}")
+
+        if xtts_speakers_path and not Path(xtts_speakers_path).exists():
+            self.logger.warning(f"Speakers path does not exist, proceeding without it")
+
+        self.reference_files = [str(file) for file in reference_dir.glob("*.wav")]
+        if not self.reference_files:
+            raise FileNotFoundError(f"No .wav files found in reference directory: {reference_dir}")
 
         self.logger.info("Loading XTTS model...")
         config = XttsConfig()
@@ -47,8 +54,8 @@ class XTTSWrapper:
             config=config,
             checkpoint_path=xtts_model_path,
             vocab_path=xtts_vocab_path,
-            speaker_file_path=f"{PROJECT_ROOT}/{self.config['tts_speakers']}",
-            use_deepspeed=False,
+            speaker_file_path=xtts_speakers_path,
+            use_deepspeed=self.config["use_deepspeed"],
         )
 
         if self.device == "cuda":
@@ -62,13 +69,8 @@ class XTTSWrapper:
     def infer_audio(self, text: str) -> str:
 
         self.logger.info("Starting TTS inference...")
-        speaker_audio_path = f"{PROJECT_ROOT}/{self.config['tts_reference_wav']}"
-
-        # Split if multiple audios supplied
-        if "," in speaker_audio_path:
-            speaker_audio_path = speaker_audio_path.split(",")
         gpt_cond_latent, speaker_embedding = self.tts.get_conditioning_latents(
-            audio_path=speaker_audio_path,
+            audio_path=self.reference_files,
             gpt_cond_len=self.tts.config.gpt_cond_len,
             max_ref_length=self.tts.config.max_ref_len,
             sound_norm_refs=self.tts.config.sound_norm_refs,

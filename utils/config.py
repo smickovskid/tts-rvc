@@ -1,7 +1,8 @@
 import sys
+from typing import Any
 from logging import Logger
 
-def check_env_vars(env_vars: dict, logger: Logger):
+def check_env_vars(env_vars: dict[str, Any], logger: Logger):
     """Checks if all the keys in the dictionary have non-empty values."""
     missing_vars = []
 

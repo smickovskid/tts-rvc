@@ -38,21 +38,20 @@ fi
 pip install --upgrade pip==24
 pip install -r requirements.txt
 
+# Create necessary directories
+mkdir -p data data/converted data/unconverted
+mkdir -p "tts_models/$NAME" "tts_models/$NAME/reference_files"
+mkdir -p "assets/weights"
+
 # Check if models are already downloaded
 if [ ! -f assets/.downloaded ]; then
-  mkdir -p tmp
   curl -o tmp/download_models.py https://raw.githubusercontent.com/RVC-Project/Retrieval-based-Voice-Conversion-WebUI/refs/heads/main/tools/download_models.py
   python tmp/download_models.py
   touch assets/.downloaded
-  rm -rf tmp
 else
   echo "Models already downloaded. Skipping download."
 fi
 
-# Create necessary directories
-mkdir -p "tmp"
-mkdir -p "tts_models/$NAME"
-mkdir -p "assets/weights"
 
 # Download and extract Coqui model
 if [[ -n "$COQUI_MODEL_ZIP" ]]; then
@@ -68,4 +67,3 @@ fi
 
 # Cleanup
 rm -rf tmp
-
