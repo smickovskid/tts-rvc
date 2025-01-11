@@ -39,9 +39,10 @@ class RVCWrapper:
 
         tgt_sr, audio_opt, _, _ = self.vc.vc_single(
             1,
-            input_audio_path=Path(f"{UNCONVERTED_DATA_DIR}/{ref_audio}"),
+            input_audio_path=Path(ref_audio),
             hubert_path=(f"{PROJECT_ROOT}/{self.config['hubert_path']}"),
             index_file=index_path,
         )
-        wavfile.write(f"{CONVERTED_DATA_DIR}/converted_{ref_audio}", tgt_sr, audio_opt)
-        return f"{CONVERTED_DATA_DIR}/converted_{ref_audio}"
+        filename = os.path.basename(ref_audio)
+        wavfile.write(f"{CONVERTED_DATA_DIR}/converted_{filename}", tgt_sr, audio_opt)
+        return f"{CONVERTED_DATA_DIR}/converted_{filename}"

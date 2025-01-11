@@ -7,6 +7,7 @@ from rvc.modules.vc.modules import os
 
 
 from rvc_wrapper.client import RVCWrapper
+from tts_wrapper.styletts_client import StyleTTSWrapper
 from tts_wrapper.xtts_client import XTTSWrapper
 from api_models.models import define_models
 from utils.logger import setup_logger
@@ -16,9 +17,16 @@ LOGGER = setup_logger(log_level=logging.INFO)
 load_dotenv()
 app = Flask(__name__)
 
-# TTS setup
-tts_wrapper = XTTSWrapper(LOGGER)
-tts_config = tts_wrapper.config
+tts_framework = os.getenv("tts_framework")
+
+if tts_framework == "xtts":
+    tts_wrapper = XTTSWrapper(LOGGER)
+    tts_config = tts_wrapper.config
+
+else:
+    # Deafult to styletts2
+    tts_wrapper = StyleTTSWrapper(LOGGER)
+    tts_config = tts_wrapper.config
 
 # RVC setup
 rvc_wrapper = RVCWrapper(LOGGER)
@@ -49,14 +57,20 @@ class Generate(Resource):
     )
     def post(self):
         try:
+            run_rvc = False
             request_data = request.get_json()
 
             if not request_data or "message" not in request_data:
                 return {"error": "Message missing from body."}, 400
 
+            if "rvc" in request_data:
+                run_rvc = request_data["rvc"]
+
             LOGGER.debug(request_data["message"])
             audio = tts_wrapper.infer_audio(request_data["message"])
-            ref_audio = rvc_wrapper.infer_audio(audio)
+            ref_audio = audio
+            if run_rvc:
+                ref_audio = rvc_wrapper.infer_audio(audio)
 
             return send_file(
                 ref_audio,

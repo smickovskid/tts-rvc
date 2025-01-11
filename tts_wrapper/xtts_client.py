@@ -54,7 +54,7 @@ class XTTSWrapper:
             config=config,
             checkpoint_path=xtts_model_path,
             vocab_path=xtts_vocab_path,
-            speaker_file_path=xtts_speakers_path,
+            # speaker_file_path=xtts_speakers_path,
             use_deepspeed=self.config["use_deepspeed"],
         )
 
@@ -80,6 +80,7 @@ class XTTSWrapper:
         repetition_penalty = self.tts.config.repetition_penalty
 
         out = self.tts.inference(
+            # speed=0.8,
             text=text,
             language=self.config["tts_language"],
             gpt_cond_latent=gpt_cond_latent,

@@ -12,6 +12,11 @@ def define_models(api):
                 required=True, description="Text message to generate audio"
             )
         },
+        {
+            "rvc": fields.Boolean(
+                required=False, description="Whether to use RVC."
+            )
+        },
     )
     generate_response_model = api.model(
         "GenerateResponse",
